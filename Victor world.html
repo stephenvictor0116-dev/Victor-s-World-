@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Victor's Chat with Voice</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f2f6fc;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      margin: 0;
+    }
+    header {
+      background: #007bff;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      font-size: 1.4rem;
+      font-weight: 700;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.15);
+    }
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: #e8edf7;
+    }
+    .message {
+      max-width: 70%;
+      padding: 12px 18px;
+      border-radius: 20px;
+      line-height: 1.4;
+      box-shadow: 0 1px 3px rgb(0 0 0 / 0.1);
+      font-size: 1rem;
+      word-wrap: break-word;
+    }
+    .sent {
+      align-self: flex-end;
+      background: #007bff;color: white;
+      border-bottom-right-radius: 4px;
+    }
+    .received {
+      align-self: flex-start;
+      background: white;
+      color: #333;
+      border-bottom-left-radius: 4px;
+    }
+    .message audio {
+      width: 100%;
+      outline: none;
+      border-radius: 12px;
+    }
+    .input-area {
+      display: flex;
+      padding: 10px 15px;
+      background: white;
+      border-top: 1px solid #ddd;
+    }
+    .input-area input[type="text"] {
+      flex: 1;
+      font-size: 1rem;
+      padding: 10px 14px;
+      border: 1px solid #ccc;
+      border-radius: 50px;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+    .input-area input[type="text"]:focus {
+      border-color: #007bff;
+    }
+    .input-area button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 0 18px;
+      margin-left: 10px;
+      border-radius: 50%;
+      font-size: 1.3rem;
+      cursor: pointer;
+      transition: background 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .input-area button:hover {
+      background: #0056b3;
+    }
+    #recordBtn {
+      background: none;
+      border: none;
+      font-size: 1.6rem;
+      color: #64b5f6;
+      margin-left: 10px;
+      cursor: pointer;
+      outline: none;user-select: none;
+      transition: color 0.3s;
+    }
+    #recordBtn.recording {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+
+<header>Victor's Chat with Voice 🎙️</header>
+
+<div id="messages"></div>
+
+<form id="chatForm" class="input-area" autocomplete="off">
+  <input type="text" id="inputMessage" placeholder="Type a message..." />
+  <button type="submit" aria-label="Send message">➤</button>
+  <button type="button" id="recordBtn" title="Press & hold to record voice message">🎙️</button>
+</form>
+
+<script>
+  const messages = document.getElementById('messages');
+  const chatForm = document.getElementById('chatForm');
+  const inputMessage = document.getElementById('inputMessage');
+  const recordBtn = document.getElementById('recordBtn');
+
+  chatForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const msg = inputMessage.value.trim();
+    if (!msg) return;
+    addMessage(msg, 'sent');
+    inputMessage.value = '';
+    simulateReply(msg);
+  });
+
+  function addMessage(textOrUrl, type = 'received', isAudio = false) {
+    const msgDiv = document.createElement('div');
+    msgDiv.classList.add('message', type);
+    if (isAudio) {
+      const audio = document.createElement('audio');
+      audio.controls = true;
+      audio.src = textOrUrl;msgDiv.appendChild(audio);
+    } else {
+      msgDiv.textContent = textOrUrl;
+    }
+    messages.appendChild(msgDiv);
+    messages.scrollTop = messages.scrollHeight;
+  }
+
+  function simulateReply(userMsg) {
+    setTimeout(() => {
+      const reply = getAutoReply(userMsg);
+      addMessage(reply, 'received');
+    }, 1000 + Math.random() * 1000);
+  }
+
+  function getAutoReply(input) {
+    input = input.toLowerCase();
+    if (input.includes('hello') || input.includes('hi')) {
+      return "Hey there! What's on your mind today?";
+    } else if (input.includes('how are you')) {
+      return "I'm doing great, thanks for asking!";
+    } else if (input.includes('help')) {
+      return "Sure! How can I assist you?";
+    }
+    return "That's interesting! Tell me more.";
+  }
+
+  // Voice Recording Feature
+  let mediaRecorder;
+  let audioChunks = [];
+
+  recordBtn.addEventListener('mousedown', startRecording);
+  recordBtn.addEventListener('touchstart', startRecording);
+
+  recordBtn.addEventListener('mouseup', stopRecording);
+  recordBtn.addEventListener('touchend', stopRecording);
+
+  function startRecording() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert('Sorry, your browser does not support audio recording.');
+      return; }navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(stream => {
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.start();
+        audioChunks = [];
+        mediaRecorder.addEventListener('dataavailable', event => {
+          audioChunks.push(event.data);
+        });
+        recordBtn.classList.add('recording');
+      })
+      .catch(err => {
+        alert('Microphone access denied or error: ' + err.message);
+      });
+  }
+
+  function stopRecording() {
+    if (!mediaRecorder) return;
+    mediaRecorder.stop();
+    recordBtn.classList.remove('recording');
+    mediaRecorder.addEventListener('stop', () => {
+      const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+      addMessage(audioUrl, 'sent', true);
+      simulateReply('audio message'); // optional to trigger a reply
+    });
+  }
+</script>
+
+</body>
+</html>
